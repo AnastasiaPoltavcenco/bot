@@ -1,8 +1,11 @@
 import re
 import asyncio
+import joblib
+
 from typing import Any
 from datetime import datetime, timedelta
 from contextlib import suppress
+
 
 from aiogram import types
 from aiogram import Router, Bot, Dispatcher, F
@@ -11,13 +14,13 @@ from aiogram.filters import Command, CommandObject
 from aiogram.enums import ParseMode, ChatType
 from aiogram.exceptions import TelegramBadRequest
 
-from profanity_check import predict, predict_prob
 #from pymorphy2 import MorphAnalyzer
 
 my_id = 999030930
 
 router = Router()
 router.message.filter(F.chat.type == "supergroup", F.from_user.id == my_id)
+dp = Dispatcher()
 
 #morph = MorphAnalyzer(lang="ru")
 triggers = ["дурак", "козёл", "коза"]
@@ -94,23 +97,9 @@ async def mute(message: Message, bot: Bot, command: CommandObject | None = None)
         await message.answer(f"{mention} has been muted")
 
 
-@router.message(content_types=types.ContentType.TEXT)
-async def profanity_filter(message: Message) -> None:
-    probabilities = predict_prob([message.text])
-    is_profanity = probabilities[0] > 0.5
-
-    if is_profanity:
-        await message.answer("Не ругайся")
-    else:
-        await message.answer("Текст прошел фильтр")
-
-
-
-
-
 async def main() -> None:
     bot = Bot(open("TOKEN.txt").read(), parse_mode=ParseMode.HTML)
-    dp = Dispatcher()
+
     dp.include_router(router)
 
     await  bot.delete_webhook(True)
