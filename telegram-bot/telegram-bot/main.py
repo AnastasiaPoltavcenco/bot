@@ -67,6 +67,32 @@ async def ban(message: Message, bot: Bot, command: CommandObject | None = None) 
         await message.answer(f"{mention} has been banned")
 
 
+@router.message(Command("unmute"))
+async def mute(message: Message, bot: Bot, command: CommandObject | None = None) -> Any:
+    reply = message.reply_to_message
+    if not reply:
+        return await message.answer("User not found!")
+    until_date = parse_time(command.args)
+    mention = reply.from_user.mention_html(reply.from_user.first_name)
+
+    with suppress(TelegramBadRequest):
+        await bot.restrict_chat_member(
+            chat_id=message.chat.id,
+            user_id=reply.from_user.id,
+            until_date=until_date,
+            permissions=ChatPermissions(
+                can_send_messages=True,
+                can_send_media_messages=True,
+                can_pin_messages=True,
+                can_send_audios=True,
+                can_send_photos=True,
+                can_send_videos=True,
+                can_invite_users=True
+            )
+        )
+        await message.answer(f"{mention} has been unmuted")
+
+
 @router.message(Command("mute"))
 async def mute(message: Message, bot: Bot, command: CommandObject | None = None) -> Any:
     reply = message.reply_to_message
@@ -91,38 +117,6 @@ async def mute(message: Message, bot: Bot, command: CommandObject | None = None)
             )
         )
         await message.answer(f"{mention} has been muted")
-
-
-@router.message(Command("unmute"))
-async def unmute(message: Message, bot: Bot, command: CommandObject | None = None) -> Any:
-    if not command.args:
-        return await message.answer("User not specified!")
-
-    # Получаем username пользователя из аргументов команды
-    username = command.args.strip()
-
-    # Ищем пользователя с указанным username в чате
-    member = await bot.get_chat_member(message.chat.id, username)
-    if not member:
-        return await message.answer("User not found!")
-
-    # Снимаем мут с пользователя
-    with suppress(TelegramBadRequest):
-        await bot.restrict_chat_member(
-            chat_id=message.chat.id,
-            user_id=member.user.id,
-            until_date=None,  # Снимаем ограничение по времени
-            permissions=ChatPermissions(
-                can_send_messages=True,
-                can_send_media_messages=True,
-                can_pin_messages=True,
-                can_send_audios=True,
-                can_send_photos=True,
-                can_send_videos=True,
-                can_invite_users=True
-            )
-        )
-        await message.answer(f"{member.user.mention_html()} has been unmuted")
 
 
 async def main() -> None:
