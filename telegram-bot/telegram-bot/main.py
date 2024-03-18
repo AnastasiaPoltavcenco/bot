@@ -1,9 +1,12 @@
 import re
 import asyncio
+import joblib
+
 from typing import Any
 from datetime import datetime, timedelta
 from contextlib import suppress
 
+from aiogram import types
 from aiogram import Router, Bot, Dispatcher, F
 from aiogram.types import Message, ChatPermissions
 from aiogram.filters import Command, CommandObject
@@ -93,15 +96,9 @@ async def mute(message: Message, bot: Bot, command: CommandObject | None = None)
         await message.answer(f"{mention} has been muted")
 
 
-@router.message(F.text)
-async def profynty_filter(message: Message) -> None:
-    for word in message.text.lower().strip().split():
-        parsed_word = morph.parse(word)
-
-
 async def main() -> None:
     bot = Bot(open("TOKEN.txt").read(), parse_mode=ParseMode.HTML)
-    dp = Dispatcher()
+
     dp.include_router(router)
 
     await  bot.delete_webhook(True)
