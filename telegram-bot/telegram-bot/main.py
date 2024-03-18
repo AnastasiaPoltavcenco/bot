@@ -13,16 +13,13 @@ from aiogram.filters import Command, CommandObject
 from aiogram.enums import ParseMode, ChatType
 from aiogram.exceptions import TelegramBadRequest
 
-from pymorphy2 import MorphAnalyzer
 
 my_id = 999030930
 
 router = Router()
 router.message.filter(F.chat.type == "supergroup", F.from_user.id == my_id)
 
-morph = MorphAnalyzer(lang="ru")
-
-triggers = ["дурак", "козёл", "коза"]
+dp = Dispatcher()
 
 
 def parse_time(time_string: str | None) -> datetime | None:
@@ -94,6 +91,38 @@ async def mute(message: Message, bot: Bot, command: CommandObject | None = None)
             )
         )
         await message.answer(f"{mention} has been muted")
+
+
+@router.message(Command("unmute"))
+async def unmute(message: Message, bot: Bot, command: CommandObject | None = None) -> Any:
+    if not command.args:
+        return await message.answer("User not specified!")
+
+    # Получаем username пользователя из аргументов команды
+    username = command.args.strip()
+
+    # Ищем пользователя с указанным username в чате
+    member = await bot.get_chat_member(message.chat.id, username)
+    if not member:
+        return await message.answer("User not found!")
+
+    # Снимаем мут с пользователя
+    with suppress(TelegramBadRequest):
+        await bot.restrict_chat_member(
+            chat_id=message.chat.id,
+            user_id=member.user.id,
+            until_date=None,  # Снимаем ограничение по времени
+            permissions=ChatPermissions(
+                can_send_messages=True,
+                can_send_media_messages=True,
+                can_pin_messages=True,
+                can_send_audios=True,
+                can_send_photos=True,
+                can_send_videos=True,
+                can_invite_users=True
+            )
+        )
+        await message.answer(f"{member.user.mention_html()} has been unmuted")
 
 
 async def main() -> None:
