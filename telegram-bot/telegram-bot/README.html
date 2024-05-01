@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>README</title>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="icon" href="./favicon.ico" type="image/x-icon">
+  </head>
+  <body>
+    <main style="padding:16px;">
+        <div class="block"
+             style="
+                width:95%;
+                height:auto;
+                background-color;gray;
+                border:solid gray 1px;
+                padding:16px;">
+            <div class="title" style="width:100%;text-align:center; padding:16px;">
+                FILE rock_Paper_Scissors.py
+            </div>
+            <div class="content" style="width:100%; padding:16px;">
+                (_RPS - add to the end of function\variable\list)
+                ** function start_game_RPS:
+                    calls by @router.message(F.text == rock_Paper_Scissors) async def game3(message: types.Message):
+                    from main.py
+                    create keyboard and send to the user
+
+                ** function play_game_RPS
+                   calls by @router.message(lambda message: message.text in ["Камень", "Ножницы", "Бумага"]) async def play(message: types.Message, state: FSMContext):
+                   from main.py
+                   run game logic, create bot response and send result to the user
+            </div>
+        </div>
+        <div class="block"
+             style="
+                width:100%;
+                height:auto;
+                background-color;gray;
+                border:solid white 1px;
+                padding:16px;">
+            <div class="title" style="width:100%;text-align:center; padding:16px;">
+
+            </div>
+            <div class="content" style="width:100%; padding:16px;">
+
+            </div>
+        </div>
+    </main>
+	<script src="index.js"></script>
+  </body>
+</html>

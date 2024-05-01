@@ -1,32 +1,40 @@
 import re
 import asyncio
+import sys
+
 import joblib
 
 from typing import Any
 from datetime import datetime, timedelta
 from contextlib import suppress
 
-
 from aiogram import types
 from aiogram import Router, Bot, Dispatcher, F
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, ChatPermissions
 from aiogram.filters import Command, CommandObject
 from aiogram.enums import ParseMode, ChatType
 from aiogram.exceptions import TelegramBadRequest
 
+from env import *
+from sys_messages import *
+from utils import *
+from buttons import *
+from rock_Paper_Scissors import *
+from randomize_num import *
 
 #############################################
-my_id = 999030930
+
 
 router = Router()
-router.message.filter(F.chat.type == "supergroup", F.from_user.id == my_id)
+router.message.filter(F.chat.type == "supergroup")
 
 bot = Bot(open("TOKEN.txt").read(), parse_mode=ParseMode.HTML)
 
 dp = Dispatcher()
-##########################################
 
-rude_words = ["word1", "word2", "word3"]
+
+##########################################
 
 
 def parse_time(time_string: str | None) -> datetime | None:
@@ -57,19 +65,11 @@ def parse_time(time_string: str | None) -> datetime | None:
     return new_datetime
 
 
-async def check_rude_words(message: Message):
-    if any(word in message.text.lower() for word in rude_words):
-        await muteReasonRudeWords(message, bot)
-
-
-@dp.message_handler(lambda message: True)
-async def handle_message(message: Message):
-    await check_rude_words(message)
-
-
 @router.message(Command("ban"))
 async def ban(message: Message, bot: Bot, command: CommandObject | None = None) -> Any:
     reply = message.reply_to_message
+    if not is_owner(message.from_user.id):
+        return await message.reply(access_denied_msg)
     if not reply:
         return await message.answer("User not found!")
     until_date = parse_time(command.args)
@@ -91,8 +91,10 @@ async def unban_user(user_id: int):
     await bot.send_message(chat_id="YOUR_CHAT_ID", text=f"Пользователь с ID {user_id} был разбанен.")
 
 
-@dp.message_handler(commands=['unban'])
+@router.message(Command("unban"))
 async def unban_command(message: types.Message):
+    if not is_owner(message.from_user.id):
+        return await message.reply(access_denied_msg)
     try:
         user_id = int(message.text.split()[1])
         await unban_user(user_id)
@@ -103,16 +105,17 @@ async def unban_command(message: types.Message):
 @router.message(Command("unmute"))
 async def mute(message: Message, bot: Bot, command: CommandObject | None = None) -> Any:
     reply = message.reply_to_message
+    if not is_owner(message.from_user.id):
+        return await message.reply(access_denied_msg)
     if not reply:
-        return await message.answer("User not found!")
-    until_date = parse_time(command.args)
+        return await message.answer(user_not_found_msg)
+
     mention = reply.from_user.mention_html(reply.from_user.first_name)
 
     with suppress(TelegramBadRequest):
         await bot.restrict_chat_member(
             chat_id=message.chat.id,
             user_id=reply.from_user.id,
-            until_date=until_date,
             permissions=ChatPermissions(
                 can_send_messages=True,
                 can_send_media_messages=True,
@@ -123,12 +126,14 @@ async def mute(message: Message, bot: Bot, command: CommandObject | None = None)
                 can_invite_users=True
             )
         )
-        await message.answer(f"{mention} has been unmuted")
+        await message.answer(f"{mention} " + user_unmuted_msg)
 
 
 @router.message(Command("mute"))
 async def mute(message: Message, bot: Bot, command: CommandObject | None = None) -> Any:
     reply = message.reply_to_message
+    if not is_owner(message.from_user.id):
+        return await message.reply(access_denied_msg)
     if not reply:
         return await message.answer("User not found!")
     until_date = parse_time(command.args)
@@ -152,33 +157,86 @@ async def mute(message: Message, bot: Bot, command: CommandObject | None = None)
         await message.answer(f"{mention} has been muted")
 
 
-async def muteReasonRudeWords(message: Message, bot: Bot):
-    user_id = message.from_user.id
-    until_date = datetime.now() + timedelta(hours=1)
-    mention = message.from_user.mention_html(message.from_user.first_name)
+# --------------------------  GAMES  ---------------------------
+games_list = []
 
-    try:
-        await bot.restrict_chat_member(
-            chat_id=message.chat.id,
-            user_id=user_id,
-            until_date=until_date,
-            permissions=ChatPermissions(
-                can_send_messages=False,
-                can_send_media_messages=False,
-                can_pin_messages=False,
-                can_send_audios=False,
-                can_send_photos=False,
-                can_send_videos=False,
-                can_invite_users=False
-            )
-        )
-        await message.answer(f"{mention} has been muted")
-    except Exception as e:
-        await message.answer(f"Error occurred: {e}")
+
+@router.message(lambda message: message.text.startswith('/любимые игры'))
+async def show_fav_games(message: types.Message) -> Any:
+    fav_games = []
+    with open('fav_games.txt', 'r') as file:
+        for line in file:
+            if line:
+                fav_games.append(line.strip())
+    await message.answer(FavGameAdd_request_answer)
+    await message.answer("Любимые игры:")
+    if len(fav_games) > 0:
+        return await message.answer("\n".join(fav_games))
+    else:
+        return await message.answer("Список любимых игр пуст.")
+
+
+@router.message(lambda message: message.text.startswith('/добавь игру'))
+async def add_game_to_fav(message: types.Message) -> Any:
+    game_name = message.text.split('/добавь игру ', 1)[1]
+    games_list.append(game_name)
+    with open('fav_games.txt', 'a') as file:
+        file.write(f'{game_name}\n')\
+
+
+@router.message(lambda message: message.text.startswith('/удали игру'))
+async def remove_game_from_fav(message: types.Message) -> Any:
+    game_name = message.text.split('/удали игру ', 1)[1]
+    with open('fav_games.txt', 'r') as file:
+            lines = file.readlines()
+    print(lines)
+    print(game_name)
+    if len(lines) == 0:
+        return await message.answer("Список любимых игр пуст.")
+    if (game_name + "\n") not in lines:
+        await message.answer(f"Игры '{game_name}' нет в списке.")
+        return
+
+    lines = [line.strip() for line in lines if line.strip() != game_name]
+
+    with open('fav_games.txt', 'w') as file:
+        file.writelines("\n".join(lines))
+
+    await message.answer(f"Игра '{game_name}' удалена из списка любимых.")
+
+
+@router.message(Command("играть"))
+async def choose_game(message: Message) -> Any:
+    await message.answer("Привет, выбери игру:", reply_markup=gameButtonsReplyMarkup)
+
+
+@router.message(F.text == quiz)
+async def game1(message: types.Message):
+    await message.answer(chosen_the_quiz)
+
+
+@router.message(F.text == wheel_of_Fortune)
+async def game2(message: types.Message):
+    await message.answer(chosen_the_wheel_of_Fortune)
+
+
+@router.message(F.text == random_number)
+async def game3(message: types.Message):
+    await message.answer(chosen_the_random_number + ": " + str(await( start_random_num_game())))
+
+
+@router.message(F.text == rock_Paper_Scissors)
+async def game3(message: types.Message):
+    await message.answer(chosen_the_rock_Paper_Scissors)
+    await start_game_RPS(message)
+
+
+@router.message(lambda message: message.text in ["Камень", "Ножницы", "Бумага"])
+async def play(message: types.Message, state: FSMContext):
+    await play_game_RPS(message, state)
 
 
 async def main() -> None:
-
     dp.include_router(router)
 
     await bot.delete_webhook(True)
